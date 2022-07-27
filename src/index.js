@@ -6,6 +6,7 @@ const multer = require("multer");
 const path = require("path");
 const app = express();
 const fileUpload = require("express-fileupload");
+const cors = require("cors");
 
 const { v4: uuidv4 } = require('uuid');
 
@@ -19,6 +20,7 @@ app.set('port', process.env.PORT || 3000);
 app.use(express.static(path.join(__dirname, 'public')));
 
 //middleware 
+app.use(cors())
 app.use(express.urlencoded({extended:false}));
 /*const storage = multer.diskStorage({
   destination: path.join(__dirname, 'public/img/upload'),

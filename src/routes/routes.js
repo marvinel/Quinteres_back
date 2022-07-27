@@ -70,7 +70,7 @@ app.post("/add_user", async (request, response) => {
   });
   usuario.save((err, usuarioDB) => {
     if (err) {
-      return res.status(400).json({
+      return response.json({
         ok: false,
         err,
       });
