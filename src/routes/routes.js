@@ -6,57 +6,10 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const uploadImage = require('../cloudinary');
 const fs = require('fs-extra');
-
-app.get('/', async (req, res) => {
-  const images = await imageModel.find()
-
-  res.send({ images: images })
-})
-
-app.post('/upload', async (req, res) => {
+const checkAuth = require('./middleware/checkAuth');
 
 
-  try {
-
-    /*image.title = req.body.title,
-  image.description = req.body.description,
-  image.filename = req.file.filename,
-  image.path = '/img/upload/' + req.file.filename,
-  image.originalname = req.file.originalname,
-  image.mimetype = req.file.mimetype,
-  image.size = req.file.size;
-*/
-    const image = new imageModel();
-
-    if (req.files?.image) {
-      const result = await uploadImage(req.files.image.tempFilePath)
-    
-
-      image.title = req.body.title
-      image.description = req.body.description
-      image.image = {
-        public_id: result.public_id,
-        secure_url: result.secure_url
-      }
-      image.size = result.bytes
-      //await fs.unlink(req.files.image.tempFilePath);
-      await image.save();
-      res.send('uploaded')
-    }else{
-      res.send('Hace falta una image')
-    }
-  } catch (error) {
-    res.status(500).send(error);
-  }
-
-})
-
-app.get('/image/:id', (req, res) => {
-
-})
-app.get('/image/:id/delete', (req, res) => {
-
-})
+//AÑADIR NUEVO USUARIO
 app.post("/add_user", async (request, response) => {
 
 
@@ -81,6 +34,8 @@ app.post("/add_user", async (request, response) => {
     });
   })
 });
+
+//INICIAR SESION
 app.post("/login", async (request, res) => {
   let body = request.body
   userModel.findOne({ email: body.email }, (erro, usuarioDB) => {
@@ -91,7 +46,7 @@ app.post("/login", async (request, res) => {
       })
     }
     // Verifica que exista un usuario con el mail escrita por el usuario.
-    console.log(usuarioDB)
+
     if (!usuarioDB) {
       return res.status(400).json({
         ok: false,
@@ -101,7 +56,7 @@ app.post("/login", async (request, res) => {
       })
     }
     // Valida que la contraseña escrita por el usuario, sea la almacenada en la db
-    console.log(usuarioDB.password)
+
     if (!bcrypt.compareSync(body.password, usuarioDB.password, 10)) {
       return res.status(400).json({
         ok: false,
@@ -111,6 +66,7 @@ app.post("/login", async (request, res) => {
       });
     }
     // Genera el token de autenticación
+
     let token = jwt.sign({
       usuario: usuarioDB,
     }, 'este-es-el-seed-desarrollo', {
@@ -123,10 +79,81 @@ app.post("/login", async (request, res) => {
     })
   })
 });
-app.get("/users", async (request, response) => {
+
+// DEVUELVE TODAS LAS IMAGENES
+app.get('/', async (req, res) => {
+  const images = await imageModel.find()
+
+  res.send({ images: images })
+})
+
+//INFORMACION DE UN USUARIO CON SUS RESPECTIVAS IMAGENES
+app.get("/perfil", async (req, res) => {
+  const id = req.query.id;
+  const user = await userModel.findById(id).populate('images', {
+    image: 1,
+    title: 1,
+    description: 1
+  })
+  res.json(user)
+})
+
+//CARGAR NUEVA IMAGEN
+app.post('/upload', async (req, res) => {
+
+  const userid = req.body.userId;
+
+  const user = await userModel.findById(userid)
+
+  try {
+
+    const image = new imageModel();
+
+    if (req.files?.image) {
+      const result = await uploadImage(req.files.image.tempFilePath)
+
+      image.user = user._id
+      image.title = req.body.title
+      image.description = req.body.description
+      image.image = {
+        public_id: result.public_id,
+        secure_url: result.secure_url
+      }
+      image.size = result.bytes
+      //await fs.unlink(req.files.image.tempFilePath);
+      const savedimage = await image.save();
+
+      user.images = user.images.concat(savedimage._id)
+      await user.save()
+      res.send('uploaded')
+    } else {
+      res.send('Hace falta una image')
+    }
+  } catch (error) {
+    res.status(500).send(error);
+  }
+
+})
+
+
+
+
+
+app.get('/image/:id', (req, res) => {
+
+})
+
+
+app.get('/image/:id/delete', (req, res) => {
+
+})
+
+
+app.get("/users", checkAuth, async (request, response) => {
   const users = await userModel.find({});
 
   try {
+
     response.send(users);
   } catch (error) {
     response.status(500).send(error);
@@ -136,7 +163,7 @@ app.get("/users", async (request, response) => {
 app.get("/usersby", async (request, response) => {
   const data = request.query.data;
   const campo = request.query.campo
-  console.log(campo, data);
+
   const users = await userModel.findOne({ name: data });
 
   try {

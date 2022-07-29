@@ -18,6 +18,10 @@ const UserSchema = new mongoose.Schema({
       type: String,
       required: [true, "Le contraseña es obligatoria"],
   },
+  images:[{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'images'
+  }]
   });
   
   const User = mongoose.model("users", UserSchema);
