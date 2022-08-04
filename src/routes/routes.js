@@ -1,6 +1,7 @@
 const express = require("express");
 const userModel = require('../models/user_schema');
 const imageModel = require('../models//image_schema');
+const favModel = require('../models/favs_schema');
 const app = express();
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
@@ -135,7 +136,51 @@ app.post('/upload', async (req, res) => {
 
 })
 
+//AÑADIR IMAGEN A FAVORITA
+app.post('/addfav/:imageid', async(req,res)=>{
 
+  try{
+
+
+  const fav = new favModel();
+  const decoded = jwt.decode(req.body.token,"este-es-el-seed-desarrollo")
+  const user = await favModel.findOne({user: decoded.usuario._id})
+console.log(user)
+  if(user){
+    user.images = user.images.concat(req.params.imageid)
+   await user.save()
+   res.send({favs: user.images})
+  }else{
+    fav.user = decoded.usuario._id;
+    fav.images =req.params.imageid;
+    await fav.save()
+    res.send({favs: fav.images})
+  }
+  
+  console.log(fav +" id: "+  decoded.usuario._id+ "imageid: "+ req.params.imageid)
+}catch (error){
+  res.status(500).send(error);
+}
+})
+
+app.get('/favs', async(req,res)=>{
+  const token = req.headers.authorization.split(' ').pop();
+  console.log(token)
+  const decoded = jwt.decode(token,"este-es-el-seed-desarrollo")
+
+console.log(decoded)
+  const favs = await favModel.findOne({user: decoded.usuario._id})
+
+  res.send({ favs: favs.images })
+})
+app.post('/deletefavs', async(req,res)=>{
+  const favs = await favModel.findOne({user: req.body.userid})
+
+  const deletefav = favs.images.filter((item) => item != req.body.imageid)
+  favs.images = deletefav;
+  favs.save()
+  res.send({ favs: deletefav })
+})
 
 
 
@@ -147,6 +192,8 @@ app.get('/image/:id', (req, res) => {
 app.get('/image/:id/delete', (req, res) => {
 
 })
+
+
 
 
 app.get("/users", checkAuth, async (request, response) => {
