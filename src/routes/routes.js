@@ -90,13 +90,30 @@ app.get('/', async (req, res) => {
 
 //INFORMACION DE UN USUARIO CON SUS RESPECTIVAS IMAGENES
 app.get("/perfil", async (req, res) => {
-  const id = req.query.id;
+
+  try{
+
+ 
+  const token = req.headers.authorization?.split(' ').pop();
+  console.log(token)
+  const decoded = jwt.decode(token,"este-es-el-seed-desarrollo")
+  let id = '';
+  
+  if(req.query.id){
+    id = req.query.id;
+  }else{
+    id = decoded?.usuario._id;
+  }
   const user = await userModel.findById(id).populate('images', {
     image: 1,
     title: 1,
     description: 1
   })
   res.json(user)
+} catch (error) {
+  res.status(500).send(error);
+}
+
 })
 
 //CARGAR NUEVA IMAGEN
