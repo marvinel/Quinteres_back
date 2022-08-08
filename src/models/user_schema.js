@@ -21,7 +21,11 @@ const UserSchema = new mongoose.Schema({
   images:[{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'images'
-  }]
+  }],
+  profileimg:{
+    public_id: String, 
+    secure_url: String
+  },
   });
   
   const User = mongoose.model("users", UserSchema);

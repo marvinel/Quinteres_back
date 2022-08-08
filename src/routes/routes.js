@@ -84,7 +84,7 @@ app.post("/login", async (request, res) => {
 // DEVUELVE TODAS LAS IMAGENES
 app.get('/', async (req, res) => {
   const images = await imageModel.find()
-
+  images.sort(function() { return Math.random() - 0.5 });
   res.send({ images: images })
 })
 
@@ -144,6 +144,39 @@ app.post('/upload', async (req, res) => {
       user.images = user.images.concat(savedimage._id)
       await user.save()
       res.send('uploaded')
+    } else {
+      res.send('Hace falta una image')
+    }
+  } catch (error) {
+    res.status(500).send(error);
+  }
+
+})
+//CARGAR NUEVA IMAGEN de perfil
+app.put('/profileimg', async (req, res) => {
+
+  const userid = req.body.userId;
+
+  
+
+  try {
+    const user = await userModel.findById(userid)
+   
+
+    if (req.files?.image) {
+      const result = await uploadImage(req.files.image.tempFilePath)
+
+      const profile_image = {
+        public_id: result.public_id,
+        secure_url: result.secure_url
+      }
+
+      user.profileimg = profile_image
+      await user.save()
+      res.send({
+        status: "Ok",
+        user:  user
+      })
     } else {
       res.send('Hace falta una image')
     }
