@@ -84,35 +84,35 @@ app.post("/login", async (request, res) => {
 // DEVUELVE TODAS LAS IMAGENES
 app.get('/', async (req, res) => {
   const images = await imageModel.find()
-  images.sort(function() { return Math.random() - 0.5 });
+  images.sort(function () { return Math.random() - 0.5 });
   res.send({ images: images })
 })
 
 //INFORMACION DE UN USUARIO CON SUS RESPECTIVAS IMAGENES
 app.get("/perfil", async (req, res) => {
 
-  try{
+  try {
 
- 
-  const token = req.headers.authorization?.split(' ').pop();
-  console.log(token)
-  const decoded = jwt.decode(token,"este-es-el-seed-desarrollo")
-  let id = '';
-  
-  if(req.query.id){
-    id = req.query.id;
-  }else{
-    id = decoded?.usuario._id;
+
+    const token = req.headers.authorization?.split(' ').pop();
+    console.log(token)
+    const decoded = jwt.decode(token, "este-es-el-seed-desarrollo")
+    let id = '';
+
+    if (req.query.id) {
+      id = req.query.id;
+    } else {
+      id = decoded?.usuario._id;
+    }
+    const user = await userModel.findById(id).populate('images', {
+      image: 1,
+      title: 1,
+      description: 1
+    })
+    res.json(user)
+  } catch (error) {
+    res.status(500).send(error);
   }
-  const user = await userModel.findById(id).populate('images', {
-    image: 1,
-    title: 1,
-    description: 1
-  })
-  res.json(user)
-} catch (error) {
-  res.status(500).send(error);
-}
 
 })
 
@@ -120,36 +120,72 @@ app.get("/perfil", async (req, res) => {
 app.post('/upload', async (req, res) => {
 
   const userid = req.body.userId;
+  const admin = req.body?.admin;
+  console.log(admin)
 
-  const user = await userModel.findById(userid)
+  if (!admin) {
+    const user = await userModel.findById(userid)
 
-  try {
+    try {
 
-    const image = new imageModel();
+      const image = new imageModel();
 
-    if (req.files?.image) {
-      const result = await uploadImage(req.files.image.tempFilePath)
+      if (req.files?.image) {
+        const result = await uploadImage(req.files.image.tempFilePath)
 
-      image.user = user._id
-      image.title = req.body.title
-      image.description = req.body.description
-      image.image = {
-        public_id: result.public_id,
-        secure_url: result.secure_url
+        image.user = user._id
+        image.title = req.body.title
+        image.description = req.body.description
+        image.image = {
+          public_id: result.public_id,
+          secure_url: result.secure_url
+        }
+        image.size = result.bytes
+        //await fs.unlink(req.files.image.tempFilePath);
+        const savedimage = await image.save();
+
+        user.images = user.images.concat(savedimage._id)
+        await user.save()
+        res.send({
+          status: 'ok',
+          new_image: savedimage
+        })
+      } else {
+        res.send('Hace falta una image')
       }
-      image.size = result.bytes
-      //await fs.unlink(req.files.image.tempFilePath);
-      const savedimage = await image.save();
-
-      user.images = user.images.concat(savedimage._id)
-      await user.save()
-      res.send('uploaded')
-    } else {
-      res.send('Hace falta una image')
+    } catch (error) {
+      res.status(500).send(error);
     }
-  } catch (error) {
-    res.status(500).send(error);
+  } else {
+    try {
+
+      const image = new imageModel();
+      if (req.files?.image) {
+        const result = await uploadImage(req.files.image.tempFilePath)
+
+        
+        image.title = req.body.title
+        image.description = req.body.description
+        image.admin = admin
+        image.image = {
+          public_id: result.public_id,
+          secure_url: result.secure_url
+        }
+        image.size = result.bytes
+        //await fs.unlink(req.files.image.tempFilePath);
+        const savedimage = await image.save();
+        res.send({
+          status: 'ok',
+          new_image: savedimage
+        })
+      } else {
+        res.send('Hace falta una image')
+      }
+    } catch (error) {
+      res.status(500).send(error);
+    }
   }
+
 
 })
 //CARGAR NUEVA IMAGEN de perfil
@@ -157,11 +193,11 @@ app.put('/profileimg', async (req, res) => {
 
   const userid = req.body.userId;
 
-  
+
 
   try {
     const user = await userModel.findById(userid)
-   
+
 
     if (req.files?.image) {
       const result = await uploadImage(req.files.image.tempFilePath)
@@ -175,7 +211,7 @@ app.put('/profileimg', async (req, res) => {
       await user.save()
       res.send({
         status: "Ok",
-        user:  user
+        user: user
       })
     } else {
       res.send('Hace falta una image')
@@ -187,44 +223,47 @@ app.put('/profileimg', async (req, res) => {
 })
 
 //AÑADIR IMAGEN A FAVORITA
-app.post('/addfav/:imageid', async(req,res)=>{
+app.post('/addfav/:imageid', async (req, res) => {
 
-  try{
+  try {
 
 
-  const fav = new favModel();
-  const decoded = jwt.decode(req.body.token,"este-es-el-seed-desarrollo")
-  const user = await favModel.findOne({user: decoded.usuario._id})
-console.log(user)
-  if(user){
-    user.images = user.images.concat(req.params.imageid)
-   await user.save()
-   res.send({favs: user.images})
-  }else{
-    fav.user = decoded.usuario._id;
-    fav.images =req.params.imageid;
-    await fav.save()
-    res.send({favs: fav.images})
+    const fav = new favModel();
+    const decoded = jwt.decode(req.body.token, "este-es-el-seed-desarrollo")
+    const user = await favModel.findOne({ user: decoded.usuario._id })
+    const image = await imageModel.findById(req.params.imageid)
+    console.log(image.image)
+
+    if (user) {
+      user.images = user.images.concat({ imgid: req.params.imageid, secure_url: image.image.secure_url })
+      await user.save()
+      res.send({ favs: user.images })
+    } else {
+      fav.user = decoded.usuario._id;
+      fav.images = { imgid: req.params.imageid, secure_url: image.image.secure_url }
+
+      await fav.save()
+      res.send({ favs: fav.images })
+    }
+
+
+  } catch (error) {
+    res.status(500).send(error);
   }
-  
-  console.log(fav +" id: "+  decoded.usuario._id+ "imageid: "+ req.params.imageid)
-}catch (error){
-  res.status(500).send(error);
-}
 })
 
-app.get('/favs', async(req,res)=>{
+app.get('/favs', async (req, res) => {
   const token = req.headers.authorization.split(' ').pop();
   console.log(token)
-  const decoded = jwt.decode(token,"este-es-el-seed-desarrollo")
+  const decoded = jwt.decode(token, "este-es-el-seed-desarrollo")
 
-console.log(decoded)
-  const favs = await favModel.findOne({user: decoded.usuario._id})
+  console.log(decoded)
+  const favs = await favModel.findOne({ user: decoded.usuario._id })
 
   res.send({ favs: favs.images })
 })
-app.post('/deletefavs', async(req,res)=>{
-  const favs = await favModel.findOne({user: req.body.userid})
+app.post('/deletefavs', async (req, res) => {
+  const favs = await favModel.findOne({ user: req.body.userid })
 
   const deletefav = favs.images.filter((item) => item != req.body.imageid)
   favs.images = deletefav;

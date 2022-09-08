@@ -5,8 +5,9 @@ const FavSchema = new mongoose.Schema({
       ref: 'users'
     },
     images:[{
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'images'
+        imgid: mongoose.Schema.Types.ObjectId,
+        secure_url: String,
+        
       }]
   });
   
