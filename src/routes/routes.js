@@ -221,7 +221,23 @@ app.put('/profileimg', async (req, res) => {
   }
 
 })
+//detalles de imagen
 
+app.get('/image/:imageid', async(req, res)=>{
+ 
+  try {
+    const image = await imageModel.findById(req.params.imageid)
+    res.send({image: image})
+  } catch (error) {
+    console.log(error)
+    res.send({
+      status: 'error',
+      message: error
+      
+    })
+  }
+
+})
 //AÑADIR IMAGEN A FAVORITA
 app.post('/addfav/:imageid', async (req, res) => {
 
@@ -254,18 +270,21 @@ app.post('/addfav/:imageid', async (req, res) => {
 
 app.get('/favs', async (req, res) => {
   const token = req.headers.authorization.split(' ').pop();
-  console.log(token)
-  const decoded = jwt.decode(token, "este-es-el-seed-desarrollo")
 
-  console.log(decoded)
+  const decoded = jwt.decode(token, "este-es-el-seed-desarrollo")
   const favs = await favModel.findOne({ user: decoded.usuario._id })
 
   res.send({ favs: favs.images })
 })
-app.post('/deletefavs', async (req, res) => {
-  const favs = await favModel.findOne({ user: req.body.userid })
+app.post('/deletefavs/:imageid', async (req, res) => {
+  console.log('aca va el token')
+  console.log(req.headers.authorization)
+  const token = req.body.token;
+  
+  const decoded = jwt.decode(token, "este-es-el-seed-desarrollo")
+  const favs = await favModel.findOne({ user: decoded.usuario._id })
 
-  const deletefav = favs.images.filter((item) => item != req.body.imageid)
+  const deletefav = favs.images.filter((item) => item.imgid != req.params.imageid)
   favs.images = deletefav;
   favs.save()
   res.send({ favs: deletefav })
