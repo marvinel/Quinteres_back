@@ -5,7 +5,8 @@ const favModel = require('../models/favs_schema');
 const app = express();
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
-const uploadImage = require('../cloudinary');
+const {uploadImage, deleteImage} = require('../cloudinary');
+
 const fs = require('fs-extra');
 const checkAuth = require('./middleware/checkAuth');
 
@@ -39,7 +40,7 @@ app.post("/add_user", async (request, response) => {
 //INICIAR SESION
 app.post("/login", async (request, res) => {
   let body = request.body
-  userModel.findOne({ email: body.email }, (erro, usuarioDB) => {
+  userModel.findOne({ email: body.email  }, (erro, usuarioDB) => {
     if (erro) {
       return res.status(500).json({
         ok: false,
@@ -95,7 +96,7 @@ app.get("/perfil", async (req, res) => {
 
 
     const token = req.headers.authorization?.split(' ').pop();
-    console.log(token)
+    
     const decoded = jwt.decode(token, "este-es-el-seed-desarrollo")
     let id = '';
 
@@ -108,7 +109,8 @@ app.get("/perfil", async (req, res) => {
       image: 1,
       title: 1,
       description: 1
-    })
+    }).select({'password': 0})
+ 
     res.json(user)
   } catch (error) {
     res.status(500).send(error);
@@ -121,31 +123,41 @@ app.post('/upload', async (req, res) => {
 
   const userid = req.body.userId;
   const admin = req.body?.admin;
-  console.log(admin)
 
   if (!admin) {
     const user = await userModel.findById(userid)
-
+   
     try {
 
       const image = new imageModel();
+     
 
       if (req.files?.image) {
+       
         const result = await uploadImage(req.files.image.tempFilePath)
-
+        
+        
         image.user = user._id
+       
         image.title = req.body.title
+     
         image.description = req.body.description
+       
         image.image = {
           public_id: result.public_id,
           secure_url: result.secure_url
         }
+        
         image.size = result.bytes
+      
+        
         //await fs.unlink(req.files.image.tempFilePath);
+        
         const savedimage = await image.save();
 
         user.images = user.images.concat(savedimage._id)
         await user.save()
+        
         res.send({
           status: 'ok',
           new_image: savedimage
@@ -160,7 +172,9 @@ app.post('/upload', async (req, res) => {
     try {
 
       const image = new imageModel();
+    
       if (req.files?.image) {
+       
         const result = await uploadImage(req.files.image.tempFilePath)
 
         
@@ -182,6 +196,7 @@ app.post('/upload', async (req, res) => {
         res.send('Hace falta una image')
       }
     } catch (error) {
+      console.log(error)
       res.status(500).send(error);
     }
   }
@@ -229,7 +244,7 @@ app.get('/image/:imageid', async(req, res)=>{
     const image = await imageModel.findById(req.params.imageid)
     res.send({image: image})
   } catch (error) {
-    console.log(error)
+    
     res.send({
       status: 'error',
       message: error
@@ -248,7 +263,7 @@ app.post('/addfav/:imageid', async (req, res) => {
     const decoded = jwt.decode(req.body.token, "este-es-el-seed-desarrollo")
     const user = await favModel.findOne({ user: decoded.usuario._id })
     const image = await imageModel.findById(req.params.imageid)
-    console.log(image.image)
+   
 
     if (user) {
       user.images = user.images.concat({ imgid: req.params.imageid, secure_url: image.image.secure_url })
@@ -277,8 +292,7 @@ app.get('/favs', async (req, res) => {
   res.send({ favs: favs.images })
 })
 app.post('/deletefavs/:imageid', async (req, res) => {
-  console.log('aca va el token')
-  console.log(req.headers.authorization)
+ 
   const token = req.body.token;
   
   const decoded = jwt.decode(token, "este-es-el-seed-desarrollo")
@@ -297,15 +311,42 @@ app.get('/image/:id', (req, res) => {
 })
 
 
-app.get('/image/:id/delete', (req, res) => {
+app.post('/image/:imageid/delete', async (req, res) => {
 
+  try {
+    
+  
+const imageid = req.params.imageid
+
+
+const token = req.body.token;
+  
+const decoded = jwt.decode(token, "este-es-el-seed-desarrollo")
+
+
+const user = await userModel.findOne({ _id: decoded.usuario._id })
+
+const deleteImage2 = user.images.filter((item) => item.imgid != imageid)
+user.images = deleteImage2;
+user.save()
+const image = await imageModel.findOne({_id: imageid})
+await imageModel.deleteOne({_id: imageid})
+
+deleteImage(image.image.public_id)
+
+
+res.send({ message: "eliminado correctamente" })
+
+  }catch (error) {
+    console.error(error)
+}
 })
 
 
 
 
 app.get("/users", checkAuth, async (request, response) => {
-  const users = await userModel.find({});
+  const users = await userModel.find({}).select({'password':0});
 
   try {
 
@@ -319,7 +360,7 @@ app.get("/usersby", async (request, response) => {
   const data = request.query.data;
   const campo = request.query.campo
 
-  const users = await userModel.findOne({ name: data });
+  const users = await userModel.findOne({ name: data }).select({'password':0});
 
   try {
     response.send(users);
