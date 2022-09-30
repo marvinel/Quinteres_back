@@ -289,7 +289,7 @@ app.get('/favs', async (req, res) => {
   const decoded = jwt.decode(token, "este-es-el-seed-desarrollo")
   const favs = await favModel.findOne({ user: decoded.usuario._id })
 
-  res.send({ favs: favs.images })
+  res.send({ favs: favs.images, user: decoded.usuario._id  })
 })
 app.post('/deletefavs/:imageid', async (req, res) => {
  
@@ -346,7 +346,15 @@ res.send({ message: "eliminado correctamente" })
 
 
 app.get("/users", checkAuth, async (request, response) => {
-  const users = await userModel.find({}).select({'password':0});
+
+  
+  const token = request.headers.authorization?.split(' ').pop();
+    
+  const decoded = jwt.decode(token, "este-es-el-seed-desarrollo")
+  let id = decoded?.usuario._id
+
+  
+  const users = await userModel.findById(id).select({'password':0,'images':0});
 
   try {
 
