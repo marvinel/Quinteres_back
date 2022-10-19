@@ -289,7 +289,7 @@ app.get('/favs', async (req, res) => {
   const decoded = jwt.decode(token, "este-es-el-seed-desarrollo")
   const favs = await favModel.findOne({ user: decoded.usuario._id })
 
-  res.send({ favs: favs.images, user: decoded.usuario._id  })
+  res.send({ favs: favs?.images, user: decoded.usuario._id  })
 })
 app.post('/deletefavs/:imageid', async (req, res) => {
  
@@ -298,7 +298,7 @@ app.post('/deletefavs/:imageid', async (req, res) => {
   const decoded = jwt.decode(token, "este-es-el-seed-desarrollo")
   const favs = await favModel.findOne({ user: decoded.usuario._id })
 
-  const deletefav = favs.images.filter((item) => item.imgid != req.params.imageid)
+  const deletefav = favs?.images.filter((item) => item.imgid != req.params.imageid)
   favs.images = deletefav;
   favs.save()
   res.send({ favs: deletefav })
