@@ -22,13 +22,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 //middleware 
 app.use(cors())
 app.use(express.urlencoded({extended:false}));
-/*const storage = multer.diskStorage({
-  destination: path.join(__dirname, 'public/img/upload'),
-  filename:(req,file,cb,fillname) =>{
-    cb(null, uuidv4() + path.extname(file.originalname))
-  }
-})
-app.use(multer({storage: storage }).single('image'));*/
+
 
 app.use(fileUpload({
   useTempFiles : true,
