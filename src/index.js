@@ -7,11 +7,11 @@ const path = require("path");
 const app = express();
 const fileUpload = require("express-fileupload");
 const cors = require("cors");
-
+var { PORT} = require('./config');
 const { v4: uuidv4 } = require('uuid');
 
 app.use(express.json());
-app.set('port', process.env.PORT || 3000);
+app.set('port', PORT);
   // default  port to listen  for requests 
 
 
