@@ -366,9 +366,9 @@ app.get("/users", checkAuth, async (request, response) => {
 
 app.get("/usersby", async (request, response) => {
   const id = request.query.id;
-  console.log(id)
+ 
   const users = await userModel.findById({ _id:id }).select({'password':0,'images':0});
-  console.log(users)
+  
   try {
     response.send(users);
   } catch (error) {
