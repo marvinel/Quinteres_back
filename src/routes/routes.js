@@ -123,6 +123,7 @@ app.post('/upload', async (req, res) => {
 
   const userid = req.body.userId;
   const admin = req.body?.admin;
+  console.log(req.body)
 
   if (!admin) {
     const user = await userModel.findById(userid)
